@@ -5,18 +5,18 @@ from datetime import datetime
 app = Flask(__name__)
 CORS(app)
 
-# Simple price tracking and moving average logic
+# Trade state
 price_history = []
 trades_today = 0
 auto_trade_enabled = True
 last_signal = "HOLD"
+executed_trades = []
 
-# Configurable moving average window
-MA_PERIOD = 3
+MA_PERIOD = 3  # Simple moving average period
 
 @app.route("/api/price", methods=["POST"])
 def receive_price():
-    global price_history, last_signal, trades_today
+    global price_history, last_signal
     data = request.get_json()
     price = data.get("price")
 
@@ -36,7 +36,6 @@ def receive_price():
             last_signal = "SELL"
         else:
             last_signal = "HOLD"
-        trades_today += 1
 
     return jsonify({"status": "price received", "signal": last_signal})
 
@@ -50,7 +49,13 @@ def predict():
 
 @app.route("/api/execute", methods=["POST"])
 def execute():
+    global trades_today
     data = request.get_json()
+    executed_trades.append({
+        "signal": data.get("signal"),
+        "timestamp": datetime.utcnow().isoformat()
+    })
+    trades_today += 1
     print(f"Executed trade: {data}")
     return jsonify({"status": "executed"})
 
@@ -61,6 +66,7 @@ def status():
         "timestamp": datetime.utcnow().isoformat(),
         "trades_today": trades_today,
         "auto_trade_enabled": auto_trade_enabled,
+        "executed_trades": executed_trades,
         "chart": {
             "timestamps": list(range(len(price_history))),
             "prices": price_history

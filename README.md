@@ -1,24 +1,15 @@
-# AI Trading Backend (Real Trading Setup)
+# AI Trading Backend (Real Executed Trades)
 
-This version supports logic-based trade signals using simple moving averages.
+Tracks real executed trades only. Uses a simple moving average crossover strategy.
 
-## 🧠 Features:
-- Track live prices via `/api/price`
-- Predict signal using MA strategy via `/api/predict`
-- View trade stats and price chart via `/api/status`
+## Endpoints:
 
-## 🔄 Example:
-POST price:
-```
-curl -X POST http://localhost:5000/api/price -H "Content-Type: application/json" -d '{"price": 105.2}'
-```
+- POST /api/price → feed current price
+- GET /api/predict → get current signal
+- POST /api/execute → record a trade
+- GET /api/status → see trade history and signal chart
 
-Get signal:
-```
-curl http://localhost:5000/api/predict
-```
-
-## 🧪 Run locally:
+## Run locally:
 ```bash
 pip install -r requirements.txt
 python server.py
