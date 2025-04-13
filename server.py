@@ -5,18 +5,46 @@ from datetime import datetime
 app = Flask(__name__)
 CORS(app)
 
-mock_signal = "BUY"
+# Simple price tracking and moving average logic
+price_history = []
+trades_today = 0
 auto_trade_enabled = True
+last_signal = "HOLD"
 
-mock_chart = {
-    "timestamps": ["13:00", "13:15", "13:30", "13:45", "14:00"],
-    "prices": [100, 102, 101, 105, 107]
-}
+# Configurable moving average window
+MA_PERIOD = 3
+
+@app.route("/api/price", methods=["POST"])
+def receive_price():
+    global price_history, last_signal, trades_today
+    data = request.get_json()
+    price = data.get("price")
+
+    if price is None:
+        return jsonify({"error": "Missing price"}), 400
+
+    price_history.append(price)
+    if len(price_history) > MA_PERIOD + 1:
+        price_history = price_history[-(MA_PERIOD + 1):]
+
+    if len(price_history) > MA_PERIOD:
+        ma = sum(price_history[:-1]) / MA_PERIOD
+        last_price = price_history[-1]
+        if last_price > ma:
+            last_signal = "BUY"
+        elif last_price < ma:
+            last_signal = "SELL"
+        else:
+            last_signal = "HOLD"
+        trades_today += 1
+
+    return jsonify({"status": "price received", "signal": last_signal})
+
 
 @app.route("/api/predict", methods=["GET"])
 def predict():
     return jsonify({
-        "signal": mock_signal,
+        "signal": last_signal,
         "auto_trade": auto_trade_enabled
     })
 
@@ -24,16 +52,19 @@ def predict():
 def execute():
     data = request.get_json()
     print(f"Executed trade: {data}")
-    return jsonify({"status": "success"})
+    return jsonify({"status": "executed"})
 
 @app.route("/api/status", methods=["GET"])
 def status():
     return jsonify({
-        "last_signal": mock_signal,
+        "last_signal": last_signal,
         "timestamp": datetime.utcnow().isoformat(),
-        "trades_today": 5,
+        "trades_today": trades_today,
         "auto_trade_enabled": auto_trade_enabled,
-        "chart": mock_chart
+        "chart": {
+            "timestamps": list(range(len(price_history))),
+            "prices": price_history
+        }
     })
 
 @app.route("/api/set_auto_trade", methods=["POST"])

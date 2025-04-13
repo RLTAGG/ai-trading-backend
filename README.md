@@ -1,18 +1,25 @@
-# AI Trading Backend
+# AI Trading Backend (Real Trading Setup)
 
-This is a mock backend for your AI Trading Chrome Extension.
+This version supports logic-based trade signals using simple moving averages.
 
-## 🧪 Local Development
+## 🧠 Features:
+- Track live prices via `/api/price`
+- Predict signal using MA strategy via `/api/predict`
+- View trade stats and price chart via `/api/status`
+
+## 🔄 Example:
+POST price:
+```
+curl -X POST http://localhost:5000/api/price -H "Content-Type: application/json" -d '{"price": 105.2}'
+```
+
+Get signal:
+```
+curl http://localhost:5000/api/predict
+```
+
+## 🧪 Run locally:
 ```bash
 pip install -r requirements.txt
 python server.py
 ```
-
-## 🚀 Deploy to Render or Replit
-- Create a new web service
-- Use `server.py` as your entry point
-- Add `requirements.txt`
-
-API will be live at: `https://your-backend-url.onrender.com`
-
-Update your extension to point to that URL instead of localhost.
