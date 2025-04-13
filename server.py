@@ -29,20 +29,21 @@ def receive_price():
         history = stock.history(period="1d", interval="1m")
         if history.empty:
             return jsonify({"error": f"No 1m price data available for {ticker}"}), 500
-        price = history["Close"].iloc[-1]
-
-        # Add optional noise to simulate variation
-        price += random.uniform(-0.2, 0.2)
-        price = round(price, 2)
+        base_price = history["Close"].iloc[-1]
+        adjusted_price = round(base_price + random.uniform(-0.2, 0.2), 2)
 
     except Exception as e:
         return jsonify({"error": f"Could not fetch price for {ticker}: {str(e)}"}), 500
 
-    price_history.append(price)
+    price_history.append(adjusted_price)
     if len(price_history) > MA_PERIOD + 1:
         price_history = price_history[-(MA_PERIOD + 1):]
 
-    debug_log = {}
+    debug_log = {
+        "base_price": float(base_price),
+        "adjusted_price": adjusted_price,
+        "price_history": price_history.copy()
+    }
 
     if len(price_history) > MA_PERIOD:
         ma = sum(price_history[:-1]) / MA_PERIOD
@@ -58,16 +59,14 @@ def receive_price():
             last_signal = "HOLD"
 
     debug_log["signal"] = last_signal
-    debug_log["price_history"] = price_history.copy()
 
     return jsonify({
         "status": "price received",
         "ticker": ticker,
-        "price": price,
+        "price": adjusted_price,
         "signal": last_signal,
         "debug": debug_log
     })
-
 
 @app.route("/api/predict", methods=["GET"])
 def predict():

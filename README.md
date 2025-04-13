@@ -1,1 +1,1 @@
-# AI Trading Backend with Yahoo 1-Min Prices and Debug Logging
+# FINAL AI Trading Backend with Yahoo Price Noise and Full Debug Logging
