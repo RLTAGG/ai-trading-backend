@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from datetime import datetime
 import yfinance as yf
+import random
 
 app = Flask(__name__)
 CORS(app)
@@ -25,7 +26,15 @@ def receive_price():
 
     try:
         stock = yf.Ticker(ticker)
-        price = stock.history(period="1d")["Close"].iloc[-1]
+        history = stock.history(period="1d", interval="1m")
+        if history.empty:
+            return jsonify({"error": f"No 1m price data available for {ticker}"}), 500
+        price = history["Close"].iloc[-1]
+
+        # Add optional noise to simulate variation
+        price += random.uniform(-0.2, 0.2)
+        price = round(price, 2)
+
     except Exception as e:
         return jsonify({"error": f"Could not fetch price for {ticker}: {str(e)}"}), 500
 
@@ -33,9 +42,14 @@ def receive_price():
     if len(price_history) > MA_PERIOD + 1:
         price_history = price_history[-(MA_PERIOD + 1):]
 
+    debug_log = {}
+
     if len(price_history) > MA_PERIOD:
         ma = sum(price_history[:-1]) / MA_PERIOD
         last_price = price_history[-1]
+        debug_log["MA"] = round(ma, 2)
+        debug_log["last_price"] = last_price
+
         if last_price > ma:
             last_signal = "BUY"
         elif last_price < ma:
@@ -43,7 +57,16 @@ def receive_price():
         else:
             last_signal = "HOLD"
 
-    return jsonify({"status": "price received", "ticker": ticker, "price": price, "signal": last_signal})
+    debug_log["signal"] = last_signal
+    debug_log["price_history"] = price_history.copy()
+
+    return jsonify({
+        "status": "price received",
+        "ticker": ticker,
+        "price": price,
+        "signal": last_signal,
+        "debug": debug_log
+    })
 
 
 @app.route("/api/predict", methods=["GET"])
