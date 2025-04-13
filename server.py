@@ -1,27 +1,33 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from datetime import datetime
+import yfinance as yf
 
 app = Flask(__name__)
 CORS(app)
 
-# Trade state
 price_history = []
 trades_today = 0
 auto_trade_enabled = True
 last_signal = "HOLD"
 executed_trades = []
 
-MA_PERIOD = 3  # Simple moving average period
+MA_PERIOD = 3
 
 @app.route("/api/price", methods=["POST"])
 def receive_price():
     global price_history, last_signal
     data = request.get_json()
-    price = data.get("price")
+    ticker = data.get("ticker")
 
-    if price is None:
-        return jsonify({"error": "Missing price"}), 400
+    if not ticker:
+        return jsonify({"error": "Missing ticker"}), 400
+
+    try:
+        stock = yf.Ticker(ticker)
+        price = stock.history(period="1d")["Close"].iloc[-1]
+    except Exception as e:
+        return jsonify({"error": f"Could not fetch price for {ticker}: {str(e)}"}), 500
 
     price_history.append(price)
     if len(price_history) > MA_PERIOD + 1:
@@ -37,7 +43,7 @@ def receive_price():
         else:
             last_signal = "HOLD"
 
-    return jsonify({"status": "price received", "signal": last_signal})
+    return jsonify({"status": "price received", "ticker": ticker, "price": price, "signal": last_signal})
 
 
 @app.route("/api/predict", methods=["GET"])
@@ -65,8 +71,8 @@ def status():
         "last_signal": last_signal,
         "timestamp": datetime.utcnow().isoformat(),
         "trades_today": trades_today,
-        "auto_trade_enabled": auto_trade_enabled,
         "executed_trades": executed_trades,
+        "auto_trade_enabled": auto_trade_enabled,
         "chart": {
             "timestamps": list(range(len(price_history))),
             "prices": price_history
