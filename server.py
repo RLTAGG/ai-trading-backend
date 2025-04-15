@@ -1,64 +1,49 @@
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import random
-import datetime
+import feedparser
+import re
 
 app = Flask(__name__)
 CORS(app)
 
-TRADES = []
-AUTO_TRADE = True
+def fetch_yahoo_news_sentiment(ticker):
+    rss_url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
+    feed = feedparser.parse(rss_url)
+    sentiment_score = 0
+    headlines = []
 
-@app.route("/api/predict", methods=["GET"])
-def predict():
-    last_signal = "HOLD"
-    if TRADES:
-        last_signal = TRADES[-1]["signal"]
-    return jsonify({
-        "signal": last_signal,
-        "auto_trade": AUTO_TRADE
-    })
+    for entry in feed.entries[:5]:
+        title = entry.title
+        headlines.append(title)
 
-@app.route("/api/set_auto_trade", methods=["POST"])
-def set_auto_trade():
-    global AUTO_TRADE
-    data = request.get_json()
-    AUTO_TRADE = bool(data.get("enabled", True))
-    return jsonify({"status": "ok", "auto_trade": AUTO_TRADE})
+        title_lower = title.lower()
+        if any(w in title_lower for w in ["beats", "soars", "rises", "strong", "record", "growth"]):
+            sentiment_score += 1
+        elif any(w in title_lower for w in ["falls", "drops", "misses", "lawsuit", "crash", "weak"]):
+            sentiment_score -= 1
 
-@app.route("/api/price", methods=["POST"])
-def price():
-    data = request.get_json()
+    sentiment = "Bullish" if sentiment_score > 0 else "Bearish" if sentiment_score < 0 else "Neutral"
+    return sentiment, headlines
+
+@app.route("/api/news", methods=["POST"])
+def get_news_sentiment():
+    data = request.json
     ticker = data.get("ticker", "AAPL")
-
-    mock_price = round(random.uniform(150, 300), 2) if "AAPL" in ticker else round(random.uniform(8000, 90000), 2)
-    ma = mock_price - random.uniform(-20, 20)
-    adjusted = mock_price + random.uniform(-1, 1)
-    signal = "BUY" if adjusted > ma else "SELL" if adjusted < ma else "HOLD"
-
+    sentiment, headlines = fetch_yahoo_news_sentiment(ticker)
     return jsonify({
-        "debug": {
-            "base_price": mock_price,
-            "adjusted_price": adjusted,
-            "MA": round(ma, 2)
-        },
-        "signal": signal
+        "sentiment": sentiment,
+        "headlines": headlines
     })
 
-@app.route("/api/execute", methods=["POST"])
-def execute():
-    data = request.get_json()
-    signal = data.get("signal", "HOLD")
-    timestamp = datetime.datetime.now().isoformat()
-    TRADES.append({"signal": signal, "timestamp": timestamp})
-    return jsonify({"status": "executed", "signal": signal})
-
-@app.route("/api/status", methods=["GET"])
-def status():
+@app.route("/api/whale", methods=["GET"])
+def get_mock_whale_alert():
     return jsonify({
-        "trades_today": len(TRADES),
-        "last_signal": TRADES[-1]["signal"] if TRADES else "HOLD"
+        "status": "buy",
+        "type": "outflow",
+        "amount_usd": 750000,
+        "asset": "BTC",
+        "exchange": "Binance"
     })
 
 if __name__ == "__main__":
