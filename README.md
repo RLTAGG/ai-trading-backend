@@ -1,1 +1,1 @@
-# AI Trading Backend with CORS fixed for TradingView
+# AI Trading Backend with Multi-Feed (Yahoo, Binance, Mock) and Multi-Ticker support
