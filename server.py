@@ -5,7 +5,8 @@ import yfinance as yf
 import random
 
 app = Flask(__name__)
-CORS(app)
+# 🔐 You can replace "*" with "https://www.tradingview.com" for tighter security
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 price_history = []
 trades_today = 0

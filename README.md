@@ -1,1 +1,1 @@
-# FINAL AI Trading Backend with Yahoo Price Noise and Full Debug Logging
+# AI Trading Backend with CORS fixed for TradingView
